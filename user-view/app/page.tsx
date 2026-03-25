@@ -130,14 +130,17 @@ export default function LoginPage() {
 
                 return (
                   <div key={cellId ? cellId : `free-${index}`} className={`${baseClasses} ${isFree ? freeClasses : ''} ${isDone ? doneClasses : ''}`}>
-                    {photoUrl && (
-                      <img src={photoUrl} alt="Reto" className="absolute inset-0 w-full h-full object-cover opacity-60" />
+                    {/* Si hay foto, la mostramos al 100% de opacidad y sin el texto encima */}
+                    {photoUrl ? (
+                      <img src={photoUrl} alt="Reto completado" className="absolute inset-0 w-full h-full object-cover" />
+                    ) : (
+                      <>
+                        <span className="text-2xl sm:text-3xl mb-1 relative z-0">{cell.icon || '📷'}</span>
+                        <span className={` ${isFree ? 'text-[10px]' : 'text-[9px] sm:text-[11px]'} font-black uppercase leading-[1.1] line-clamp-3 px-1 relative z-0 `}>
+                          {cell.text}
+                        </span>
+                      </>
                     )}
-                    {/* AQUÍ ESTABA EL BUG: Eliminado z-10, dejamos solo relative */}
-                    <span className="text-2xl sm:text-3xl mb-1 relative">{cell.icon || '📷'}</span>
-                    <span className={` ${isFree ? 'text-[10px]' : 'text-[9px] sm:text-[11px]'} font-black uppercase leading-[1.1] line-clamp-3 px-1 relative`}>
-                      {cell.text}
-                    </span>
                   </div>
                 )
               })}
@@ -154,7 +157,7 @@ export default function LoginPage() {
         {/* === POPUP DE CONFIRMACIÓN === */}
         {pendingPhoto && (
           // Usando bg-opacity-90 por si falla el formato abreviado en tu navegador
-          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black bg-opacity-90">
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
             <div className="bg-white border-4 border-black p-6 rounded-3xl w-full max-w-sm shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] text-black flex flex-col items-center">
               <h2 className="text-2xl font-black text-center mb-6 italic tracking-tighter uppercase leading-none">¿Estás seguro/a?</h2>
               
