@@ -1,23 +1,15 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import partyData from './data.json' // Asegúrate de haber actualizado el JSON a 10 casillas
+import partyData from './data.json'
 
 export default function LoginPage() {
   const [nickname, setNickname] = useState('')
   const [isJoined, setIsJoined] = useState(false)
-  // NUEVO: Estado para guardar las fotos (relaciona el ID de la casilla con la imagen)
+  const [loginError, setLoginError] = useState('') 
+  
   const [uploadedPhotos, setUploadedPhotos] = useState<Record<number, string>>({})
-
-  // NUEVO: Función que se ejecuta al hacer la foto
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>, tileId: number) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      // Creamos una URL temporal para mostrar la foto instantáneamente en la pantalla
-      const imageUrl = URL.createObjectURL(file)
-      setUploadedPhotos(prev => ({ ...prev, [tileId]: imageUrl }))
-    }
-  }
+  const [pendingPhoto, setPendingPhoto] = useState<{ tileId: number; imageUrl: string } | null>(null)
 
   useEffect(() => {
     const savedName = localStorage.getItem('bingo_user_name')
@@ -26,137 +18,181 @@ export default function LoginPage() {
 
   const handleJoin = (e: React.FormEvent) => {
     e.preventDefault()
-    if (nickname.trim().length > 2) {
-      localStorage.setItem('bingo_user_name', nickname)
+    if (nickname.trim().length >= 3) {
+      localStorage.setItem('bingo_user_name', nickname.trim())
       setIsJoined(true)
+      setLoginError('')
     } else {
-      alert("¡Ponte un nombre un poco más largo! (mínimo 3 letras)")
+      setLoginError('⚠️ El nombre debe tener al menos 3 letras')
     }
   }
 
-  // --- VISTA A: EL TABLERO DE BINGO (Mobile First with Integrated FREE slots) ---
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>, tileId: number) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      const imageUrl = URL.createObjectURL(file)
+      setPendingPhoto({ tileId, imageUrl }) 
+    }
+  }
+
+  const confirmPhoto = () => {
+    if (pendingPhoto) {
+      setUploadedPhotos(prev => ({ ...prev, [pendingPhoto.tileId]: pendingPhoto.imageUrl }))
+      setPendingPhoto(null) 
+    }
+  }
+
+  const cancelPhoto = () => {
+    setPendingPhoto(null) 
+  }
+
+  // --- VISTA A: EL TABLERO DE BINGO ---
   if (isJoined) {
-    const name = localStorage.getItem('bingo_user_name')
-    
-    // NUEVA LÓGICA MÁGICA PARA QUE EL CARTÓN SIEMPRE QUEDE CUADRADO E INTEGRADO:
+    const name = localStorage.getItem('bingo_user_name') || nickname
     const columns = 3; 
-    
-    // Definimos el tamaño total del cartón (multiplos de columns). Para 10-12 casillas, 3x4=12 es ideal para móvil.
-    // Luego lo haremos dinámico según el JSON, pero para empezar con funcionalidad móvil, forzamos un tamaño ideal.
-    const grid_size = 12; // Un tablero de 3x4 (12 casillas)
+    const grid_size = 12; 
+    const emptySlotsCount = grid_size - partyData.tiles.length; 
+    const preferredFreeIndices = [4, 7, 10, 1]; 
+    const activeFreeIndices = new Set(preferredFreeIndices.slice(0, emptySlotsCount)); 
 
-    // Calculamos cuántas casillas "FREE" (Comodín) necesitamos
-    const emptySlotsCount = grid_size - partyData.tiles.length; // 12 - 10 = 2 FREE slots
-
-    // Definimos posiciones específicas (índices del 0 al grid_size-1) para "embetir" las casillas FREE.
-    // Para 3 columnas x 4 filas, el índice 4 es el centro de la 2ª fila, el 7 el centro de la 3ª.
-    // Estos formarán una columna central vertical simétrica.
-    const preferredFreeIndices = [4, 7, 10, 1]; // sorted set of FREE indices.
-
-    // Creamos un Set con los índices FREE activos para este N.
-    const activeFreeIndices = new Set(preferredFreeIndices.slice(0, emptySlotsCount)); // Para 10 items, usará [4, 7]
-
-    // Array para guardar los objetos de casillas finales (o un reto o un "FREE")
     const finalCells = [];
-
-    // Puntero para el reto actual de partyData.tiles
     let tilePointer = 0;
 
-    // Rellenamos el array finalCells de tamaño grid_size
     for (let i = 0; i < grid_size; i++) {
         if (activeFreeIndices.has(i)) {
-            // Renderizamos una casilla "FREE"
             finalCells.push({ type: 'FREE', icon: '⭐', text: 'FREE' });
         } else {
-            // Renderizamos un reto de partyData.tiles
             const tile = partyData.tiles[tilePointer];
             if (tile) {
-                finalCells.push({ ...tile, type: 'TILE' }); // añadimos tipo para claridad
+                finalCells.push({ ...tile, type: 'TILE' }); 
                 tilePointer++;
             } else {
-                // Si no hay más retos (no debería pasar con la lógica de arriba, pero por si acaso), rellenamos con FREE
                 finalCells.push({ type: 'FREE', icon: '⭐', text: 'FREE' });
             }
         }
     }
 
     return (
-      <div className="min-h-screen bg-[#fdf8e1] p-4 text-black flex flex-col items-center pb-24">
-        
-        {/* CABECERA ESTILO TICKET (No changes) */}
-        <header className="w-full max-w-sm bg-white border-4 border-black rounded-2xl p-4 mb-6 mt-2 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] relative overflow-hidden">
-          {/* Adorno perforation ... */}
-          <div className="absolute -left-3 top-1/2 w-6 h-6 bg-[#fdf8e1] border-r-4 border-black rounded-full -translate-y-1/2"></div>
-          <div className="absolute -right-3 top-1/2 w-6 h-6 bg-[#fdf8e1] border-l-4 border-black rounded-full -translate-y-1/2"></div>
+      <>
+        {/* === CONTENEDOR PRINCIPAL === */}
+        <div className="min-h-screen bg-[#fdf8e1] p-4 text-black flex flex-col items-center pb-24">
           
-          <h1 className="text-2xl font-black italic tracking-tighter uppercase text-center mb-1">
-            {partyData.party_config.name}
-          </h1>
-          <div className="flex justify-between items-center border-t-2 border-dashed border-gray-400 pt-2 mt-2">
-            <p className="font-bold text-sm text-gray-500 uppercase">
-              ID: <span className="text-black">{name}</span>
-            </p>
-            <button 
-              onClick={() => { localStorage.removeItem('bingo_user_name'); setIsJoined(false); }}
-              className="text-[10px] font-bold text-red-500 underline uppercase tracking-wider"
-            >
-              Cambiar Player
+          <header className="w-full max-w-sm bg-white border-4 border-black rounded-2xl p-4 mb-6 mt-2 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] relative overflow-hidden">
+            <div className="absolute -left-3 top-1/2 w-6 h-6 bg-[#fdf8e1] border-r-4 border-black rounded-full -translate-y-1/2"></div>
+            <div className="absolute -right-3 top-1/2 w-6 h-6 bg-[#fdf8e1] border-l-4 border-black rounded-full -translate-y-1/2"></div>
+            <h1 className="text-2xl font-black italic tracking-tighter uppercase text-center mb-1 leading-none">
+              {partyData.party_config.name}
+            </h1>
+            <div className="flex justify-between items-center border-t-2 border-dashed border-gray-400 pt-2 mt-2">
+              <p className="font-bold text-sm text-gray-500 uppercase">
+                ID: <span className="text-black">{name}</span>
+              </p>
+              <button 
+                onClick={() => { localStorage.removeItem('bingo_user_name'); setIsJoined(false); }}
+                className="text-[10px] font-bold text-red-500 underline uppercase tracking-wider"
+              >
+                Cambiar Player
+              </button>
+            </div>
+          </header>
+
+          <div className="w-full max-w-sm bg-white border-4 border-black p-3 rounded-2xl shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+            <div className="grid grid-cols-3 gap-2">
+              {finalCells.map((cell, index) => {
+                const isFree = cell.type === 'FREE';
+                const cellId = 'id' in cell ? cell.id : undefined;
+                const photoUrl = cellId ? uploadedPhotos[cellId] : null;
+                const isDone = !!photoUrl;
+                const isClickable = !isDone && !isFree && cellId;
+
+                const baseClasses = "relative flex flex-col items-center justify-center text-center aspect-square transition-all select-none rounded-xl border-2 border-black p-1 overflow-hidden";
+                const freeClasses = "bg-[#FFDE00] opacity-80";
+                const clickableClasses = "bg-[#AEE2FF] cursor-pointer hover:bg-[#FFDE00]";
+                const doneClasses = "border-4 border-green-500 shadow-[4px_4px_0px_0px_rgba(34,197,94,1)]"; 
+
+                if (isClickable) {
+                  return (
+                    <label key={cellId} className={`${baseClasses} ${clickableClasses}`}>
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        style={{ display: 'none' }} 
+                        onChange={(e) => handlePhotoUpload(e, cellId)}
+                      />
+                      {/* AQUÍ ESTABA EL BUG: Eliminado z-10, dejamos solo relative */}
+                      <span className="text-2xl sm:text-3xl mb-1 relative">{cell.icon || '📷'}</span>
+                      <span className="text-[9px] sm:text-[11px] font-black uppercase leading-[1.1] line-clamp-3 px-1 relative">
+                        {cell.text}
+                      </span>
+                    </label>
+                  )
+                }
+
+                return (
+                  <div key={cellId ? cellId : `free-${index}`} className={`${baseClasses} ${isFree ? freeClasses : ''} ${isDone ? doneClasses : ''}`}>
+                    {photoUrl && (
+                      <img src={photoUrl} alt="Reto" className="absolute inset-0 w-full h-full object-cover opacity-60" />
+                    )}
+                    {/* AQUÍ ESTABA EL BUG: Eliminado z-10, dejamos solo relative */}
+                    <span className="text-2xl sm:text-3xl mb-1 relative">{cell.icon || '📷'}</span>
+                    <span className={` ${isFree ? 'text-[10px]' : 'text-[9px] sm:text-[11px]'} font-black uppercase leading-[1.1] line-clamp-3 px-1 relative`}>
+                      {cell.text}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-sm px-4 z-40">
+            <button className="w-full bg-black text-white py-4 rounded-full font-black text-lg uppercase flex items-center justify-center gap-2 shadow-[0px_8px_0px_0px_rgba(100,100,100,1)] hover:bg-gray-800 hover:translate-y-1 hover:shadow-[0px_4px_0px_0px_rgba(100,100,100,1)] transition-all">
+              📸 VER FEED GLOBAL
             </button>
           </div>
-        </header>
+        </div>
 
-        {/* EL CARTÓN DE BINGO (Grid 3 columnas fijo para móvil, with embedded FREE slots) */}
-        <div className="w-full max-w-sm bg-white border-4 border-black p-3 rounded-2xl shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
-          <div className="grid grid-cols-3 gap-2">
-            
-            {/* Mapeamos los retos combinados (items and interspersed FREE slots) */}
-            {finalCells.map((cell, index) => {
-              const isFree = cell.type === 'FREE';
-
-              return (
-                <div 
-                  key={'id' in cell ? cell.id : `free-${index}`}
-                  // Condicionalmente fijamos el fondo para las casillas FREE
-                  className={`
-                    ${isFree ? 'bg-[#FFDE00]' : 'bg-[#AEE2FF]'}
-                    border-2 border-black rounded-xl p-1 flex flex-col items-center justify-center text-center aspect-square 
-                    transition-transform select-none
-                    ${isFree ? 'opacity-80' : 'active:scale-95 active:bg-[#FFDE00]'}
-                  `}
+        {/* === POPUP DE CONFIRMACIÓN === */}
+        {pendingPhoto && (
+          // Usando bg-opacity-90 por si falla el formato abreviado en tu navegador
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black bg-opacity-90">
+            <div className="bg-white border-4 border-black p-6 rounded-3xl w-full max-w-sm shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] text-black flex flex-col items-center">
+              <h2 className="text-2xl font-black text-center mb-6 italic tracking-tighter uppercase leading-none">¿Estás seguro/a?</h2>
+              
+              <img 
+                src={pendingPhoto.imageUrl} 
+                alt="Previsualización" 
+                className="w-full h-auto aspect-square object-cover border-4 border-black rounded-xl mb-8 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-gray-200"
+              />
+              
+              <div className="flex gap-4 w-full">
+                <button 
+                  onClick={cancelPhoto}
+                  className="flex-1 bg-red-100 border-4 border-red-600 text-red-600 py-3.5 rounded-xl font-black text-lg uppercase shadow-[4px_4px_0px_0px_rgba(220,38,38,1)] hover:translate-y-1 hover:shadow-none transition-all"
                 >
-                  <span className="text-2xl sm:text-3xl mb-1">{cell.icon || '📷'}</span>
-                  <span className={`
-                    ${isFree ? 'text-[10px]' : 'text-[9px] sm:text-[11px]'}
-                    font-black uppercase leading-[1.1] line-clamp-3 px-1
-                  `}>
-                    {cell.text}
-                  </span>
-                </div>
-              )
-            })}
-
+                  Repetir
+                </button>
+                <button 
+                  onClick={confirmPhoto}
+                  className="flex-1 bg-green-400 border-4 border-black text-black py-3.5 rounded-xl font-black text-lg uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-y-1 hover:shadow-none transition-all"
+                >
+                  Confirmar
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
-
-        {/* BOTÓN FLOTANTE PARA EL FEED (Muy móvil, No changes) */}
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-sm z-50">
-          <button className="w-full bg-black text-white py-4 rounded-full font-black text-lg uppercase flex items-center justify-center gap-2 shadow-[0px_8px_0px_0px_rgba(100,100,100,1)] active:shadow-none active:translate-y-2 transition-all">
-            📸 VER FEED GLOBAL
-          </button>
-        </div>
-
-      </div>
+        )}
+      </>
     )
   }
 
-  // --- VISTA B: PANTALLA DE LOGIN (No changes) ---
+  // --- VISTA B: PANTALLA DE LOGIN ---
   return (
-    <div className="min-h-screen bg-[#AEE2FF] flex flex-col items-center justify-center p-6 text-black">
+    <div className="min-h-screen bg-[#AEE2FF] flex flex-col items-center justify-center p-6 text-black relative">
       <div className="absolute top-10 left-10 text-3xl opacity-50">⭐</div>
       <div className="absolute bottom-20 right-10 text-3xl opacity-50">✨</div>
 
       <div className="w-full max-w-sm bg-white border-4 border-black p-8 rounded-3xl shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] text-black relative z-10">
-        <h1 className="text-3xl font-black text-center mb-8 italic tracking-tighter">
+        <h1 className="text-3xl font-black text-center mb-8 italic tracking-tighter uppercase leading-none">
           BINGO PARTY
         </h1>
         
@@ -170,9 +206,12 @@ export default function LoginPage() {
             className="w-full p-4 border-3 border-black text-black rounded-xl font-bold text-lg focus:outline-none focus:ring-2 focus:ring-[#FFDE00]"
             maxLength={15}
           />
+          
+          {loginError && <p className="text-red-600 text-xs font-bold -mt-2">{loginError}</p>}
+
           <button 
             type="submit"
-            className="w-full bg-[#FFDE00] border-4 border-black text-black py-4 rounded-xl font-black text-xl uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-1 active:translate-y-1 transition-all select-none"
+            className="w-full bg-[#FFDE00] border-4 border-black text-black py-4 rounded-xl font-black text-xl uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-y-1 hover:shadow-none transition-all"
           >
             ¡ENTRAR!
           </button>
