@@ -1,0 +1,19 @@
+{
+  "party_config": {
+    "name": "Boda de Ana y Luis",
+    "max_participants": 100,
+    "grid_size": 12
+  },
+  "tiles": [
+    { "id": 1, "icon": "👰", "text": "Selfie con los novios" },
+    { "id": 2, "icon": "💃", "text": "Bailando la Macarena" },
+    { "id": 3, "icon": "🎂", "text": "La tarta nupcial" },
+    { "id": 4, "icon": "🍷", "text": "Alguien muy borracho" },
+    { "id": 5, "icon": "😭", "text": "Alguien llorando de emoción" },
+    { "id": 6, "icon": "👔", "text": "El mejor traje/vestido" },
+    { "id": 7, "icon": "💋", "text": "Beso inesperado" },
+    { "id": 8, "icon": "📸", "text": "Foto a quien hace fotos" },
+    { "id": 9, "icon": "👶", "text": "Un niño liándola" },
+    { "id": 10, "icon": "🎤", "text": "Cantando a gritos" }
+  ]
+}
