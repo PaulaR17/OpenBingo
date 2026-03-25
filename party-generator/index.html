@@ -8,7 +8,6 @@
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <div class="animated-bg"></div>
     <main id="app">
         <section class="editor-sidebar">
             <h1 class="party-title">Party Setup</h1>
@@ -33,7 +32,10 @@
         </section>
 
         <section class="preview-area">
-            <div id="bingo-preview" class="grid-container"></div>
+            <div class="preview-content">
+                <h2 id="preview-party-name" class="party-title" style="display: none;"></h2>
+                <div id="bingo-preview" class="grid-container"></div>
+            </div>
         </section>
     </main>
 
@@ -44,6 +46,17 @@
                 <button id="close-emoji-modal" class="close-btn">&times;</button>
             </div>
             <div id="emoji-grid" class="emoji-grid"></div>
+        </div>
+    </div>
+
+    <div id="delete-modal" class="modal hidden">
+        <div class="modal-content card" style="text-align: center; max-width: 400px;">
+            <h2>Delete Mission?</h2>
+            <p id="delete-tile-text" style="font-size: 1.2rem; margin: 20px 0;"></p>
+            <div style="display: flex; gap: 10px;">
+                <button id="confirm-delete-btn" style="background: var(--p-pink);">Delete</button>
+                <button id="cancel-delete-btn" style="background: var(--p-blue);">Cancel</button>
+            </div>
         </div>
     </div>
 

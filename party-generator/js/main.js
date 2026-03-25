@@ -6,10 +6,25 @@ const state = {
 
 const currentEmojiDisplay = document.getElementById('current-emoji');
 const previewGrid = document.getElementById('bingo-preview');
-const modal = document.getElementById('emoji-modal');
+const emojiModal = document.getElementById('emoji-modal');
 const grid = document.getElementById('emoji-grid');
+const partyNameInput = document.getElementById('party-name');
+const previewPartyName = document.getElementById('preview-party-name');
+
+const deleteModal = document.getElementById('delete-modal');
+let tileToDeleteIndex = null;
+let draggedTileIndex = null;
 
 currentEmojiDisplay.textContent = state.selectedEmoji;
+
+partyNameInput.addEventListener('input', (e) => {
+    if (e.target.value.trim() !== '') {
+        previewPartyName.style.display = 'block';
+        previewPartyName.textContent = e.target.value;
+    } else {
+        previewPartyName.style.display = 'none';
+    }
+});
 
 EMOJI_POOL.forEach(emoji => {
     const el = document.createElement('div');
@@ -18,39 +33,100 @@ EMOJI_POOL.forEach(emoji => {
     el.onclick = () => {
         state.selectedEmoji = emoji;
         currentEmojiDisplay.textContent = emoji;
-        modal.classList.add('hidden');
+        emojiModal.classList.add('hidden');
     };
     grid.appendChild(el);
 });
 
-document.getElementById('select-emoji-btn').onclick = () => modal.classList.remove('hidden');
-document.getElementById('close-emoji-modal').onclick = () => modal.classList.add('hidden');
+document.getElementById('select-emoji-btn').onclick = () => emojiModal.classList.remove('hidden');
+document.getElementById('close-emoji-modal').onclick = () => emojiModal.classList.add('hidden');
+
+function reindexTiles() {
+    state.tiles.forEach((t, index) => {
+        t.id = index + 1;
+    });
+}
+
+function renderPreview() {
+    previewGrid.innerHTML = '';
+    
+    state.tiles.forEach((t, index) => {
+        const div = document.createElement('div');
+        div.className = 'tile';
+        div.draggable = true;
+        div.innerHTML = `
+            <span class="tile-id">${t.id}</span>
+            <span class="tile-icon">${t.icon}</span>
+            <p>${t.text}</p>
+        `;
+        
+        div.onclick = () => {
+            tileToDeleteIndex = index;
+            document.getElementById('delete-tile-text').textContent = t.text;
+            deleteModal.classList.remove('hidden');
+        };
+
+        div.ondragstart = (e) => {
+            draggedTileIndex = index;
+            setTimeout(() => div.classList.add('dragging'), 0);
+        };
+
+        div.ondragend = () => {
+            div.classList.remove('dragging');
+            draggedTileIndex = null;
+        };
+
+        div.ondragover = (e) => {
+            e.preventDefault();
+        };
+
+        div.ondrop = (e) => {
+            e.preventDefault();
+            if (draggedTileIndex === null || draggedTileIndex === index) return;
+            
+            const draggedItem = state.tiles.splice(draggedTileIndex, 1)[0];
+            state.tiles.splice(index, 0, draggedItem);
+            
+            reindexTiles();
+            renderPreview();
+        };
+
+        previewGrid.appendChild(div);
+    });
+}
 
 document.getElementById('add-tile-btn').onclick = () => {
     const textInput = document.getElementById('tile-text');
-    if (!textInput.value) return;
+    if (!textInput.value.trim()) return;
 
     const newTile = {
         id: state.tiles.length + 1,
         icon: state.selectedEmoji,
-        text: textInput.value
+        text: textInput.value.trim()
     };
 
     state.tiles.push(newTile);
-    
-    previewGrid.innerHTML = '';
-    state.tiles.forEach(t => {
-        const div = document.createElement('div');
-        div.className = 'tile';
-        div.innerHTML = `<span>${t.icon}</span><p>${t.text}</p>`;
-        previewGrid.appendChild(div);
-    });
-
+    renderPreview();
     textInput.value = '';
 };
 
+document.getElementById('cancel-delete-btn').onclick = () => {
+    deleteModal.classList.add('hidden');
+    tileToDeleteIndex = null;
+};
+
+document.getElementById('confirm-delete-btn').onclick = () => {
+    if (tileToDeleteIndex !== null) {
+        state.tiles.splice(tileToDeleteIndex, 1);
+        reindexTiles();
+        renderPreview();
+    }
+    deleteModal.classList.add('hidden');
+    tileToDeleteIndex = null;
+};
+
 document.getElementById('export-json-btn').onclick = () => {
-    const nameInput = document.getElementById('party-name').value;
+    const nameInput = document.getElementById('party-name').value.trim();
     const maxInput = parseInt(document.getElementById('max-players').value);
 
     state.party_config.name = nameInput || "Party";
