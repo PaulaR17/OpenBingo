@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react' // AÑADIDO: useRef para la cámara de repetir
+import { useState, useEffect, useRef } from 'react' 
 import partyData from './data.json'
 
 export default function LoginPage() {
@@ -11,23 +11,26 @@ export default function LoginPage() {
   const [uploadedPhotos, setUploadedPhotos] = useState<Record<number, string>>({})
   const [pendingPhoto, setPendingPhoto] = useState<{ tileId: number; imageUrl: string } | null>(null)
 
-  // NUEVO: Estado para ver la foto en grande y Referencia a la cámara
   const [viewingPhoto, setViewingPhoto] = useState<{ id: number; photoUrl: string; text: string; icon: string } | null>(null)
   const retakeInputRef = useRef<HTMLInputElement>(null)
 
+  // Al cargar, si ya existe el nombre, entramos directo
   useEffect(() => {
     const savedName = localStorage.getItem('bingo_user_name')
     if (savedName) setIsJoined(true)
   }, [])
 
-  const handleJoin = (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleJoin = () => {
     if (nickname.trim().length >= 3) {
-      localStorage.setItem('bingo_user_name', nickname.trim())
+      try {
+        localStorage.setItem('bingo_user_name', nickname.trim())
+      } catch (error) {
+        console.log("Error con localStorage")
+      }
       setIsJoined(true)
       setLoginError('')
     } else {
-      setLoginError('⚠️ El nombre debe tener al menos 3 letras')
+      setLoginError('⚠️ Mínimo 3 letras')
     }
   }
 
@@ -39,16 +42,14 @@ export default function LoginPage() {
     }
   }
 
-  // NUEVO: Función para subir una foto nueva cuando le das a "Repetir"
   const handleRetakeSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!viewingPhoto) return;
     const file = e.target.files?.[0];
     if (file) {
       const imageUrl = URL.createObjectURL(file);
-      setViewingPhoto(null); // Cierra el detalle
-      setPendingPhoto({ tileId: viewingPhoto.id, imageUrl }); // Abre tu popup de confirmar
+      setViewingPhoto(null); 
+      setPendingPhoto({ tileId: viewingPhoto.id, imageUrl }); 
     }
-    // Limpiamos el input para que deje volver a seleccionar la misma si hace falta
     e.target.value = '';
   }
 
@@ -66,7 +67,6 @@ export default function LoginPage() {
   // --- VISTA A: EL TABLERO DE BINGO ---
   if (isJoined) {
     const name = localStorage.getItem('bingo_user_name') || nickname
-    const columns = 3; 
     const grid_size = 12; 
     const emptySlotsCount = grid_size - partyData.tiles.length; 
     const preferredFreeIndices = [4, 7, 10, 1]; 
@@ -91,7 +91,6 @@ export default function LoginPage() {
 
     return (
       <>
-        {/* === CONTENEDOR PRINCIPAL === */}
         <div className="min-h-screen bg-[#fdf8e1] p-4 text-black flex flex-col items-center pb-24">
           
           <header className="w-full max-w-sm bg-white border-4 border-black rounded-2xl p-4 mb-6 mt-2 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] relative overflow-hidden">
@@ -100,16 +99,11 @@ export default function LoginPage() {
             <h1 className="text-2xl font-black italic tracking-tighter uppercase text-center mb-1 leading-none">
               {partyData.party_config.name}
             </h1>
-            <div className="flex justify-between items-center border-t-2 border-dashed border-gray-400 pt-2 mt-2">
+            <div className="flex justify-center items-center border-t-2 border-dashed border-gray-400 pt-2 mt-2">
               <p className="font-bold text-sm text-gray-500 uppercase">
-                ID: <span className="text-black">{name}</span>
+                PLAYER: <span className="text-black">{name}</span>
               </p>
-              <button 
-                onClick={() => { localStorage.removeItem('bingo_user_name'); setIsJoined(false); }}
-                className="text-[10px] font-bold text-red-500 underline uppercase tracking-wider"
-              >
-                Cambiar Player
-              </button>
+              {/* BOTÓN ELIMINADO PARA QUE NO PUEDAN CAMBIARLO */}
             </div>
           </header>
 
@@ -124,7 +118,7 @@ export default function LoginPage() {
 
                 const baseClasses = "relative flex flex-col items-center justify-center text-center aspect-square transition-all select-none rounded-xl border-2 border-black p-1 overflow-hidden";
                 const freeClasses = "bg-[#FFDE00] opacity-80";
-                const clickableClasses = "bg-[#AEE2FF] cursor-pointer hover:bg-[#FFDE00]";
+                const clickableClasses = "bg-[#AEE2FF] cursor-pointer active:bg-[#FFDE00]";
                 const doneClasses = "border-4 border-green-500 shadow-[4px_4px_0px_0px_rgba(34,197,94,1)]"; 
 
                 if (isClickable) {
@@ -137,38 +131,31 @@ export default function LoginPage() {
                         style={{ display: 'none' }} 
                         onChange={(e) => handlePhotoUpload(e, cellId)}
                       />
-                      <span className="text-2xl sm:text-3xl mb-1 relative">{cell.icon || '📷'}</span>
-                      <span className="text-[9px] sm:text-[11px] font-black uppercase leading-[1.1] line-clamp-3 px-1 relative">
+                      <span className="text-2xl sm:text-3xl mb-1">{cell.icon || '📷'}</span>
+                      <span className="text-[9px] sm:text-[11px] font-black uppercase leading-[1.1] line-clamp-3 px-1">
                         {cell.text}
                       </span>
                     </label>
                   )
                 }
 
-                // AQUÍ ESTÁ LA MAGIA: Tu mismo <div> pero con onClick
+                if (isDone && cellId) {
+                  return (
+                    <button 
+                      type="button"
+                      key={cellId} 
+                      className={`${baseClasses} ${doneClasses} active:scale-95`}
+                      onClick={() => setViewingPhoto({ id: cellId, photoUrl, text: cell.text, icon: cell.icon || '📷' })}
+                    >
+                      <img src={photoUrl} alt="Reto" className="absolute inset-0 w-full h-full object-cover" />
+                    </button>
+                  )
+                }
+
                 return (
-                  <div 
-                    key={cellId ? cellId : `free-${index}`} 
-                    // Si está hecho (isDone), le ponemos cursor-pointer para que parezca clicable
-                    className={`${baseClasses} ${isFree ? freeClasses : ''} ${isDone ? doneClasses + ' cursor-pointer hover:scale-95' : ''}`}
-                    onClick={() => {
-                      // Al hacer clic, si tiene foto, guardamos la info para mostrarla en el popup
-                      if (isDone && cellId) {
-                        setViewingPhoto({ id: cellId, photoUrl, text: cell.text, icon: cell.icon || '📷' })
-                      }
-                    }}
-                  >
-                    {/* Si hay foto, la mostramos al 100% de opacidad y sin el texto encima */}
-                    {photoUrl ? (
-                      <img src={photoUrl} alt="Reto completado" className="absolute inset-0 w-full h-full object-cover" />
-                    ) : (
-                      <>
-                        <span className="text-2xl sm:text-3xl mb-1 relative z-0">{cell.icon || '📷'}</span>
-                        <span className={` ${isFree ? 'text-[10px]' : 'text-[9px] sm:text-[11px]'} font-black uppercase leading-[1.1] line-clamp-3 px-1 relative z-0 `}>
-                          {cell.text}
-                        </span>
-                      </>
-                    )}
+                  <div key={`free-${index}`} className={`${baseClasses} ${freeClasses}`}>
+                    <span className="text-2xl sm:text-3xl mb-1">{cell.icon || '⭐'}</span>
+                    <span className="text-[10px] font-black uppercase leading-[1.1]">{cell.text}</span>
                   </div>
                 )
               })}
@@ -176,124 +163,77 @@ export default function LoginPage() {
           </div>
 
           <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-sm px-4 z-40">
-            <button className="w-full bg-black text-white py-4 rounded-full font-black text-lg uppercase flex items-center justify-center gap-2 shadow-[0px_8px_0px_0px_rgba(100,100,100,1)] hover:bg-gray-800 hover:translate-y-1 hover:shadow-[0px_4px_0px_0px_rgba(100,100,100,1)] transition-all">
+            <button className="w-full bg-black text-white py-4 rounded-full font-black text-lg uppercase shadow-[0px_8px_0px_0px_rgba(100,100,100,1)] active:translate-y-1 active:shadow-[0px_4px_0px_0px_rgba(100,100,100,1)] transition-all">
               📸 VER FEED GLOBAL
             </button>
           </div>
         </div>
 
-        {/* ========================================================= */}
-        {/* NUEVO: POPUP DE VER FOTO FINALIZADA */}
-        {/* ========================================================= */}
+        {/* POPUPS Y CÁMARA IGUAL QUE ANTES... */}
         {viewingPhoto && (
           <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/50">
-            <div className="bg-white border-4 border-black p-6 rounded-3xl w-full max-w-sm shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] text-black flex flex-col items-center">
-              
-              {/* Icono y texto del reto que estás viendo */}
-              <div className="flex items-center gap-2 mb-4 w-full justify-center">
+            <div className="bg-white border-4 border-black p-6 rounded-3xl w-full max-w-sm shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] flex flex-col items-center text-black">
+              <div className="flex items-center gap-2 mb-4">
                 <span className="text-3xl">{viewingPhoto.icon}</span>
-                <span className="text-sm font-black uppercase leading-tight text-center">{viewingPhoto.text}</span>
+                <span className="text-sm font-black uppercase text-center">{viewingPhoto.text}</span>
               </div>
-              
-              <img 
-                src={viewingPhoto.photoUrl} 
-                alt="Detalle" 
-                className="w-full h-auto aspect-square object-cover border-4 border-black rounded-xl mb-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-gray-200"
-              />
-              
+              <img src={viewingPhoto.photoUrl} alt="Detail" className="w-full aspect-square object-cover border-4 border-black rounded-xl mb-6" />
               <div className="flex gap-4 w-full">
-                <button 
-                  onClick={() => setViewingPhoto(null)} // Cierra este popup
-                  className="flex-1 bg-gray-200 border-4 border-black text-black py-3.5 rounded-xl font-black text-lg uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-y-1 hover:shadow-none transition-all"
-                >
-                  Cerrar
-                </button>
-                <button 
-                  onClick={() => retakeInputRef.current?.click()} // Dispara la cámara
-                  className="flex-1 bg-[#FFDE00] border-4 border-black text-black py-3.5 rounded-xl font-black text-lg uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-y-1 hover:shadow-none transition-all"
-                >
-                  Repetir
-                </button>
+                <button onClick={() => setViewingPhoto(null)} className="flex-1 bg-gray-200 border-4 border-black py-3 rounded-xl font-black uppercase active:translate-y-1 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">Cerrar</button>
+                <button onClick={() => retakeInputRef.current?.click()} className="flex-1 bg-[#FFDE00] border-4 border-black py-3 rounded-xl font-black uppercase active:translate-y-1 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">Repetir</button>
               </div>
             </div>
           </div>
         )}
 
-        {/* === POPUP DE CONFIRMACIÓN DE SIEMPRE === */}
         {pendingPhoto && (
-          // Usando bg-opacity-90 por si falla el formato abreviado en tu navegador
-          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
-            <div className="bg-white border-4 border-black p-6 rounded-3xl w-full max-w-sm shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] text-black flex flex-col items-center">
-              <h2 className="text-2xl font-black text-center mb-6 italic tracking-tighter uppercase leading-none">¿Estás seguro/a?</h2>
-              
-              <img 
-                src={pendingPhoto.imageUrl} 
-                alt="Previsualización" 
-                className="w-full h-auto aspect-square object-cover border-4 border-black rounded-xl mb-8 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-gray-200"
-              />
-              
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/20 backdrop-blur-sm">
+            <div className="bg-white border-4 border-black p-6 rounded-3xl w-full max-w-sm shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] flex flex-col items-center text-black">
+              <h2 className="text-2xl font-black mb-6 uppercase italic">¿Confirmas?</h2>
+              <img src={pendingPhoto.imageUrl} alt="Preview" className="w-full aspect-square object-cover border-4 border-black rounded-xl mb-8 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]" />
               <div className="flex gap-4 w-full">
-                <button 
-                  onClick={cancelPhoto}
-                  className="flex-1 bg-red-100 border-4 border-red-600 text-red-600 py-3.5 rounded-xl font-black text-lg uppercase shadow-[4px_4px_0px_0px_rgba(220,38,38,1)] hover:translate-y-1 hover:shadow-none transition-all"
-                >
-                  Repetir
-                </button>
-                <button 
-                  onClick={confirmPhoto}
-                  className="flex-1 bg-green-400 border-4 border-black text-black py-3.5 rounded-xl font-black text-lg uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-y-1 hover:shadow-none transition-all"
-                >
-                  Confirmar
-                </button>
+                <button onClick={cancelPhoto} className="flex-1 bg-red-100 border-4 border-red-600 text-red-600 py-3 rounded-xl font-black uppercase active:translate-y-1 shadow-[4px_4px_0px_0px_rgba(220,38,38,1)]">No</button>
+                <button onClick={confirmPhoto} className="flex-1 bg-green-400 border-4 border-black py-3 rounded-xl font-black uppercase active:translate-y-1 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">SÍ</button>
               </div>
             </div>
           </div>
         )}
 
-        {/* NUEVO: Input oculto para abrir la cámara al darle a "Repetir" en el popup de ver foto */}
-        <input 
-          type="file" 
-          accept="image/*" 
-          capture="environment"
-          ref={retakeInputRef} 
-          style={{ display: 'none' }} 
-          onChange={handleRetakeSelect} 
-        />
+        <input type="file" accept="image/*" capture="environment" ref={retakeInputRef} style={{ display: 'none' }} onChange={handleRetakeSelect} />
       </>
     )
   }
 
-  // --- VISTA B: PANTALLA DE LOGIN ---
+  // --- VISTA B: LOGIN (ULTRA SIMPLIFICADO SIN FORM) ---
   return (
-    <div className="min-h-screen bg-[#AEE2FF] flex flex-col items-center justify-center p-6 text-black relative">
-      <div className="absolute top-10 left-10 text-3xl opacity-50">⭐</div>
-      <div className="absolute bottom-20 right-10 text-3xl opacity-50">✨</div>
-
-      <div className="w-full max-w-sm bg-white border-4 border-black p-8 rounded-3xl shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] text-black relative z-10">
-        <h1 className="text-3xl font-black text-center mb-8 italic tracking-tighter uppercase leading-none">
-          BINGO PARTY
-        </h1>
+    <div className="min-h-screen bg-[#AEE2FF] flex flex-col items-center justify-center p-6 text-black">
+      <div className="w-full max-w-sm bg-white border-4 border-black p-8 rounded-3xl shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+        <h1 className="text-3xl font-black text-center mb-8 italic uppercase">BINGO PARTY</h1>
         
-        <form onSubmit={handleJoin} className="flex flex-col gap-4">
-          <label className="font-bold text-sm uppercase ml-1">¿Tu Nickname?</label>
+        <div className="flex flex-col gap-4">
+          <label className="font-bold text-sm uppercase">Nickname</label>
           <input 
             type="text" 
             placeholder="Ej: Paula_99"
             value={nickname}
             onChange={(e) => setNickname(e.target.value)}
-            className="w-full p-4 border-3 border-black text-black rounded-xl font-bold text-lg focus:outline-none focus:ring-2 focus:ring-[#FFDE00]"
-            maxLength={15}
+            className="w-full p-4 border-4 border-black rounded-xl font-bold text-lg focus:outline-none bg-white"
           />
           
-          {loginError && <p className="text-red-600 text-xs font-bold -mt-2">{loginError}</p>}
+          {loginError && <p className="text-red-600 text-xs font-bold">{loginError}</p>}
 
-          <button 
-            type="submit"
-            className="w-full bg-[#FFDE00] border-4 border-black text-black py-4 rounded-xl font-black text-xl uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-y-1 hover:shadow-none transition-all"
+         <button 
+          type="button"
+           // Usamos onPointerDown para saltarnos cualquier restricción de "clic" del móvil
+          onPointerDown={(e) => {
+           console.log("¡Botón pulsado!");
+           handleJoin();
+          }}
+          className="w-full bg-[#FFDE00] border-4 border-black py-4 rounded-xl font-black text-xl uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-1 active:shadow-none select-none touch-manipulation"
           >
             ¡ENTRAR!
           </button>
-        </form>
+        </div>
       </div>
     </div>
   )
