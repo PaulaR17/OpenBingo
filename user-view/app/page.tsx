@@ -4,36 +4,47 @@ import { useState, useEffect, useRef } from 'react'
 import partyData from './data.json'
 
 export default function LoginPage() {
+  // --- ESTADOS ---
   const [nickname, setNickname] = useState('')
   const [isJoined, setIsJoined] = useState(false)
   const [loginError, setLoginError] = useState('') 
-  
   const [uploadedPhotos, setUploadedPhotos] = useState<Record<number, string>>({})
   const [pendingPhoto, setPendingPhoto] = useState<{ tileId: number; imageUrl: string } | null>(null)
-
   const [viewingPhoto, setViewingPhoto] = useState<{ id: number; photoUrl: string; text: string; icon: string } | null>(null)
+
+  // --- REFS ---
   const retakeInputRef = useRef<HTMLInputElement>(null)
 
-  // Al cargar, si ya existe el nombre, entramos directo
+  // --- EFECTOS ---
+  // Al cargar, si ya existe el nombre en el navegador, entramos directo
   useEffect(() => {
     const savedName = localStorage.getItem('bingo_user_name')
     if (savedName) setIsJoined(true)
   }, [])
 
+  // --- LÓGICA DE USUARIO ---
   const handleJoin = () => {
-    if (nickname.trim().length >= 3) {
+    const cleanName = nickname.trim();
+    if (cleanName.length >= 3) {
       try {
-        localStorage.setItem('bingo_user_name', nickname.trim())
-      } catch (error) {
-        console.log("Error con localStorage")
+        localStorage.setItem('bingo_user_name', cleanName);
+        setIsJoined(true);
+        setLoginError('');
+      } catch (err) {
+        // Por si el móvil bloquea el almacenamiento, dejamos entrar igual
+        setIsJoined(true);
       }
-      setIsJoined(true)
-      setLoginError('')
     } else {
-      setLoginError('⚠️ Mínimo 3 letras')
+      setLoginError('⚠️ Mínimo 3 letras');
     }
-  }
+  };
 
+  const handleResetUser = () => {
+    localStorage.clear();
+    window.location.reload();
+  };
+
+  // --- LÓGICA DE FOTOS ---
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>, tileId: number) => {
     const file = e.target.files?.[0]
     if (file) {
@@ -64,7 +75,7 @@ export default function LoginPage() {
     setPendingPhoto(null) 
   }
 
-  // --- VISTA A: EL TABLERO DE BINGO ---
+  // --- RENDERIZADO DEL TABLERO ---
   if (isJoined) {
     const name = localStorage.getItem('bingo_user_name') || nickname
     const grid_size = 12; 
@@ -103,7 +114,6 @@ export default function LoginPage() {
               <p className="font-bold text-sm text-gray-500 uppercase">
                 PLAYER: <span className="text-black">{name}</span>
               </p>
-              {/* BOTÓN ELIMINADO PARA QUE NO PUEDAN CAMBIARLO */}
             </div>
           </header>
 
@@ -121,6 +131,7 @@ export default function LoginPage() {
                 const clickableClasses = "bg-[#AEE2FF] cursor-pointer active:bg-[#FFDE00]";
                 const doneClasses = "border-4 border-green-500 shadow-[4px_4px_0px_0px_rgba(34,197,94,1)]"; 
 
+                // 1. CASILLA DISPONIBLE
                 if (isClickable) {
                   return (
                     <label key={cellId} className={`${baseClasses} ${clickableClasses}`}>
@@ -139,6 +150,7 @@ export default function LoginPage() {
                   )
                 }
 
+                // 2. CASILLA COMPLETADA (Ver detalle)
                 if (isDone && cellId) {
                   return (
                     <button 
@@ -152,6 +164,7 @@ export default function LoginPage() {
                   )
                 }
 
+                // 3. CASILLA FREE
                 return (
                   <div key={`free-${index}`} className={`${baseClasses} ${freeClasses}`}>
                     <span className="text-2xl sm:text-3xl mb-1">{cell.icon || '⭐'}</span>
@@ -169,7 +182,7 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* POPUPS Y CÁMARA IGUAL QUE ANTES... */}
+        {/* MODAL: VER FOTO DETALLE */}
         {viewingPhoto && (
           <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/50">
             <div className="bg-white border-4 border-black p-6 rounded-3xl w-full max-w-sm shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] flex flex-col items-center text-black">
@@ -186,13 +199,14 @@ export default function LoginPage() {
           </div>
         )}
 
+        {/* MODAL: CONFIRMACIÓN DE FOTO */}
         {pendingPhoto && (
           <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/20 backdrop-blur-sm">
             <div className="bg-white border-4 border-black p-6 rounded-3xl w-full max-w-sm shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] flex flex-col items-center text-black">
-              <h2 className="text-2xl font-black mb-6 uppercase italic">¿Confirmas?</h2>
+              <h2 className="text-2xl font-black mb-6 uppercase italic tracking-tighter">¿Confirmas la foto?</h2>
               <img src={pendingPhoto.imageUrl} alt="Preview" className="w-full aspect-square object-cover border-4 border-black rounded-xl mb-8 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]" />
               <div className="flex gap-4 w-full">
-                <button onClick={cancelPhoto} className="flex-1 bg-red-100 border-4 border-red-600 text-red-600 py-3 rounded-xl font-black uppercase active:translate-y-1 shadow-[4px_4px_0px_0px_rgba(220,38,38,1)]">No</button>
+                <button onClick={cancelPhoto} className="flex-1 bg-red-100 border-4 border-red-600 text-red-600 py-3 rounded-xl font-black uppercase active:translate-y-1 shadow-[4px_4px_0px_0px_rgba(220,38,38,1)]">Repetir</button>
                 <button onClick={confirmPhoto} className="flex-1 bg-green-400 border-4 border-black py-3 rounded-xl font-black uppercase active:translate-y-1 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">SÍ</button>
               </div>
             </div>
@@ -204,34 +218,44 @@ export default function LoginPage() {
     )
   }
 
-  // --- VISTA B: LOGIN (ULTRA SIMPLIFICADO SIN FORM) ---
+  // --- VISTA B: LOGIN ---
   return (
     <div className="min-h-screen bg-[#AEE2FF] flex flex-col items-center justify-center p-6 text-black">
       <div className="w-full max-w-sm bg-white border-4 border-black p-8 rounded-3xl shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
-        <h1 className="text-3xl font-black text-center mb-8 italic uppercase">BINGO PARTY</h1>
+        <h1 className="text-3xl font-black text-center mb-8 italic uppercase tracking-tighter">BINGO PARTY</h1>
         
+        {/* Usamos un div para evitar el envío de formulario accidental en móviles */}
         <div className="flex flex-col gap-4">
-          <label className="font-bold text-sm uppercase">Nickname</label>
+          <label className="font-bold text-sm uppercase">Tu Nickname</label>
           <input 
             type="text" 
             placeholder="Ej: Paula_99"
             value={nickname}
             onChange={(e) => setNickname(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
             className="w-full p-4 border-4 border-black rounded-xl font-bold text-lg focus:outline-none bg-white"
           />
           
           {loginError && <p className="text-red-600 text-xs font-bold">{loginError}</p>}
 
-         <button 
+         <button
           type="button"
-           // Usamos onPointerDown para saltarnos cualquier restricción de "clic" del móvil
-          onPointerDown={(e) => {
-           console.log("¡Botón pulsado!");
-           handleJoin();
+          onClick={() => {
+            alert('CLICK OK')
+            handleJoin()
           }}
-          className="w-full bg-[#FFDE00] border-4 border-black py-4 rounded-xl font-black text-xl uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-1 active:shadow-none select-none touch-manipulation"
+          className="w-full bg-[#FFDE00] border-4 border-black py-4 rounded-xl font-black text-xl uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-1 active:shadow-none select-none"
+        >
+          ¡ENTRAR!
+        </button>
+
+          {/* BOTÓN DE EMERGENCIA */}
+          <button 
+            type="button"
+            onClick={handleResetUser}
+            className="mt-8 text-[10px] text-gray-400 underline uppercase text-center font-bold"
           >
-            ¡ENTRAR!
+            Limpiar caché y resetear usuario
           </button>
         </div>
       </div>
