@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react' // AÑADIDO: useRef para la cámara de repetir
 import partyData from './data.json'
 
 export default function LoginPage() {
@@ -10,6 +10,10 @@ export default function LoginPage() {
   
   const [uploadedPhotos, setUploadedPhotos] = useState<Record<number, string>>({})
   const [pendingPhoto, setPendingPhoto] = useState<{ tileId: number; imageUrl: string } | null>(null)
+
+  // NUEVO: Estado para ver la foto en grande y Referencia a la cámara
+  const [viewingPhoto, setViewingPhoto] = useState<{ id: number; photoUrl: string; text: string; icon: string } | null>(null)
+  const retakeInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     const savedName = localStorage.getItem('bingo_user_name')
@@ -33,6 +37,19 @@ export default function LoginPage() {
       const imageUrl = URL.createObjectURL(file)
       setPendingPhoto({ tileId, imageUrl }) 
     }
+  }
+
+  // NUEVO: Función para subir una foto nueva cuando le das a "Repetir"
+  const handleRetakeSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!viewingPhoto) return;
+    const file = e.target.files?.[0];
+    if (file) {
+      const imageUrl = URL.createObjectURL(file);
+      setViewingPhoto(null); // Cierra el detalle
+      setPendingPhoto({ tileId: viewingPhoto.id, imageUrl }); // Abre tu popup de confirmar
+    }
+    // Limpiamos el input para que deje volver a seleccionar la misma si hace falta
+    e.target.value = '';
   }
 
   const confirmPhoto = () => {
@@ -116,10 +133,10 @@ export default function LoginPage() {
                       <input 
                         type="file" 
                         accept="image/*" 
+                        capture="environment"
                         style={{ display: 'none' }} 
                         onChange={(e) => handlePhotoUpload(e, cellId)}
                       />
-                      {/* AQUÍ ESTABA EL BUG: Eliminado z-10, dejamos solo relative */}
                       <span className="text-2xl sm:text-3xl mb-1 relative">{cell.icon || '📷'}</span>
                       <span className="text-[9px] sm:text-[11px] font-black uppercase leading-[1.1] line-clamp-3 px-1 relative">
                         {cell.text}
@@ -128,8 +145,19 @@ export default function LoginPage() {
                   )
                 }
 
+                // AQUÍ ESTÁ LA MAGIA: Tu mismo <div> pero con onClick
                 return (
-                  <div key={cellId ? cellId : `free-${index}`} className={`${baseClasses} ${isFree ? freeClasses : ''} ${isDone ? doneClasses : ''}`}>
+                  <div 
+                    key={cellId ? cellId : `free-${index}`} 
+                    // Si está hecho (isDone), le ponemos cursor-pointer para que parezca clicable
+                    className={`${baseClasses} ${isFree ? freeClasses : ''} ${isDone ? doneClasses + ' cursor-pointer hover:scale-95' : ''}`}
+                    onClick={() => {
+                      // Al hacer clic, si tiene foto, guardamos la info para mostrarla en el popup
+                      if (isDone && cellId) {
+                        setViewingPhoto({ id: cellId, photoUrl, text: cell.text, icon: cell.icon || '📷' })
+                      }
+                    }}
+                  >
                     {/* Si hay foto, la mostramos al 100% de opacidad y sin el texto encima */}
                     {photoUrl ? (
                       <img src={photoUrl} alt="Reto completado" className="absolute inset-0 w-full h-full object-cover" />
@@ -154,7 +182,44 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* === POPUP DE CONFIRMACIÓN === */}
+        {/* ========================================================= */}
+        {/* NUEVO: POPUP DE VER FOTO FINALIZADA */}
+        {/* ========================================================= */}
+        {viewingPhoto && (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/50">
+            <div className="bg-white border-4 border-black p-6 rounded-3xl w-full max-w-sm shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] text-black flex flex-col items-center">
+              
+              {/* Icono y texto del reto que estás viendo */}
+              <div className="flex items-center gap-2 mb-4 w-full justify-center">
+                <span className="text-3xl">{viewingPhoto.icon}</span>
+                <span className="text-sm font-black uppercase leading-tight text-center">{viewingPhoto.text}</span>
+              </div>
+              
+              <img 
+                src={viewingPhoto.photoUrl} 
+                alt="Detalle" 
+                className="w-full h-auto aspect-square object-cover border-4 border-black rounded-xl mb-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-gray-200"
+              />
+              
+              <div className="flex gap-4 w-full">
+                <button 
+                  onClick={() => setViewingPhoto(null)} // Cierra este popup
+                  className="flex-1 bg-gray-200 border-4 border-black text-black py-3.5 rounded-xl font-black text-lg uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-y-1 hover:shadow-none transition-all"
+                >
+                  Cerrar
+                </button>
+                <button 
+                  onClick={() => retakeInputRef.current?.click()} // Dispara la cámara
+                  className="flex-1 bg-[#FFDE00] border-4 border-black text-black py-3.5 rounded-xl font-black text-lg uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-y-1 hover:shadow-none transition-all"
+                >
+                  Repetir
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* === POPUP DE CONFIRMACIÓN DE SIEMPRE === */}
         {pendingPhoto && (
           // Usando bg-opacity-90 por si falla el formato abreviado en tu navegador
           <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
@@ -184,6 +249,16 @@ export default function LoginPage() {
             </div>
           </div>
         )}
+
+        {/* NUEVO: Input oculto para abrir la cámara al darle a "Repetir" en el popup de ver foto */}
+        <input 
+          type="file" 
+          accept="image/*" 
+          capture="environment"
+          ref={retakeInputRef} 
+          style={{ display: 'none' }} 
+          onChange={handleRetakeSelect} 
+        />
       </>
     )
   }
