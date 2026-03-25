@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Party Bingo</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&family=Grandstander:wght@700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="animated-bg"></div>
+    <main id="app">
+        <section class="editor-sidebar">
+            <h1 class="party-title">Party Setup</h1>
+            
+            <div class="group card">
+                <input type="text" id="party-name" placeholder="Party Name">
+                <input type="number" id="max-players" placeholder="Max Friends" min="1" value="20">
+            </div>
+
+            <div class="tile-creator card">
+                <h3>New Mission</h3>
+                <button type="button" id="select-emoji-btn" class="emoji-trigger">
+                    <span id="current-emoji">&#x1F4F8;</span> Pick Icon
+                </button>
+                <input type="text" id="tile-text" placeholder="Mission text...">
+                <button id="add-tile-btn" class="btn-add">Add to Bingo</button>
+            </div>
+
+            <div class="actions">
+                <button id="export-json-btn" class="btn-download">Download Config</button>
+            </div>
+        </section>
+
+        <section class="preview-area">
+            <div id="bingo-preview" class="grid-container"></div>
+        </section>
+    </main>
+
+    <div id="emoji-modal" class="modal hidden">
+        <div class="modal-content card">
+            <div class="modal-header">
+                <h2>Pick an Icon</h2>
+                <button id="close-emoji-modal" class="close-btn">&times;</button>
+            </div>
+            <div id="emoji-grid" class="emoji-grid"></div>
+        </div>
+    </div>
+
+    <script src="js/emojis.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
